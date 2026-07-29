@@ -1,0 +1,29 @@
+{% extends "base.html" %}
+
+{% block title %}
+SafeGate AI | {{ heading }}
+{% endblock %}
+
+{% block page_title %}
+{{ heading }}
+{% endblock %}
+
+{% block page_description %}
+{{ description }}
+{% endblock %}
+
+{% block content %}
+
+<section class="panel">
+    <div class="empty-state">
+        <h3>{{ heading }}</h3>
+
+        <p>{{ description }}</p>
+
+        <p>
+            This module will be connected in the next build step.
+        </p>
+    </div>
+</section>
+
+{% endblock %}

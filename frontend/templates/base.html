@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>{% block title %}SafeGate AI{% endblock %}</title>
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', filename='css/style.css') }}"
+    >
+</head>
+
+<body>
+    <div class="app-layout">
+
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-mark">S</div>
+
+                <div>
+                    <h1>SafeGate AI</h1>
+                    <p>Smart Access Control</p>
+                </div>
+            </div>
+
+            <nav class="navigation">
+                <a
+                    class="nav-link {% if page == 'dashboard' %}active{% endif %}"
+                    href="{{ url_for('dashboard') }}"
+                >
+                    <span>⌂</span>
+                    Dashboard
+                </a>
+
+                <a
+                    class="nav-link {% if page == 'workers' %}active{% endif %}"
+                    href="{{ url_for('workers_page') }}"
+                >
+                    <span>👷</span>
+                    Workers
+                </a>
+
+                <a
+                    class="nav-link {% if page == 'logs' %}active{% endif %}"
+                    href="{{ url_for('logs_page') }}"
+                >
+                    <span>▤</span>
+                    Access Logs
+                </a>
+
+                <a
+                    class="nav-link {% if page == 'reports' %}active{% endif %}"
+                    href="{{ url_for('reports_page') }}"
+                >
+                    <span>▥</span>
+                    Reports
+                </a>
+
+                <a
+                    class="nav-link {% if page == 'gate' %}active{% endif %}"
+                    href="{{ url_for('gate_page') }}"
+                >
+                    <span>🚪</span>
+                    Gate Control
+                </a>
+
+                <a
+                    class="nav-link {% if page == 'settings' %}active{% endif %}"
+                    href="{{ url_for('settings_page') }}"
+                >
+                    <span>⚙</span>
+                    Settings
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="system-indicator">
+                    <span class="status-dot online"></span>
+
+                    <div>
+                        <strong>System online</strong>
+                        <small>Edge processing active</small>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <div class="main-area">
+            <header class="topbar">
+                <div>
+                    <h2>{% block page_title %}Dashboard{% endblock %}</h2>
+
+                    <p>
+                        {% block page_description %}
+                        Construction access-control monitoring
+                        {% endblock %}
+                    </p>
+                </div>
+
+                <div class="topbar-actions">
+                    <div class="site-status">
+                        <span class="status-dot online"></span>
+                        Site A online
+                    </div>
+
+                    <div class="manager-avatar">
+                        SM
+                    </div>
+                </div>
+            </header>
+
+            <main class="content">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+
+    </div>
+
+    <script
+        src="{{ url_for('static', filename='js/app.js') }}"
+    ></script>
+</body>
+</html>

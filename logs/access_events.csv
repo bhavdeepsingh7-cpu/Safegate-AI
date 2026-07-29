@@ -1,0 +1,7 @@
+timestamp,worker_id,worker_name,role,helmet_exempt,status,helmet_frames,vest_frames,frames_checked,reason,snapshot_path,override_status,override_manager,override_time
+2026-07-28T18:01:49,1002,John Smith,Site Labourer,False,ACCESS DENIED,0,0,15,Required PPE missing: helmet.,logs/snapshots/2026-07-28/access_denied/18-01-49_1002_john_smith.jpg,,,
+2026-07-28T18:01:50,1002,John Smith,Site Labourer,False,MANAGER REVIEW,0,0,15,PPE detections are unclear or inconsistent.,logs/snapshots/2026-07-28/manager_review/18-01-50_1002_john_smith.jpg,,,
+2026-07-28T18:01:54,1002,John Smith,Site Labourer,False,ACCESS DENIED,0,0,15,Required PPE missing: helmet.,logs/snapshots/2026-07-28/access_denied/18-01-54_1002_john_smith.jpg,,,
+2026-07-28T18:01:58,1002,John Smith,Site Labourer,False,MANAGER REVIEW,0,0,15,PPE detections are unclear or inconsistent.,logs/snapshots/2026-07-28/manager_review/18-01-58_1002_john_smith.jpg,,,
+2026-07-28T18:02:00,1002,John Smith,Site Labourer,False,ACCESS DENIED,0,0,15,Required PPE missing: helmet.,logs/snapshots/2026-07-28/access_denied/18-02-00_1002_john_smith.jpg,,,
+2026-07-28T18:02:01,1002,John Smith,Site Labourer,False,MANAGER REVIEW,0,0,15,PPE detections are unclear or inconsistent.,logs/snapshots/2026-07-28/manager_review/18-02-01_1002_john_smith.jpg,,,
