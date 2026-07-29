@@ -1,4 +1,6 @@
 import csv
+import re
+from collections import Counter
 from pathlib import Path
 
 from flask import (
@@ -12,6 +14,7 @@ from flask import (
 )
 
 from event_logger import EventLogger
+from detector import INFERENCE_IMAGE_SIZE, INFERENCE_IOU_THRESHOLD
 from live_feed import LiveFeedService
 from snapshot_manager import SnapshotManager
 from worker_db import Worker, WorkerDatabase
@@ -30,6 +33,13 @@ MODEL_PATH = (
     / "weights"
     / "best.pt"
 )
+DETECTION_CONFIDENCE = 0.25
+CAMERA_INDEX = 0
+DECISION_HISTORY_SIZE = 15
+GRANT_THRESHOLD = 10
+DENY_THRESHOLD = 10
+FLASK_HOST = "127.0.0.1"
+FLASK_PORT = 5000
 
 app = Flask(
     __name__,
@@ -69,10 +79,33 @@ def record_final_decision(
 
 live_feed_service = LiveFeedService(
     model_path=str(MODEL_PATH),
-    confidence=0.25,
-    camera_index=0,
+    confidence=DETECTION_CONFIDENCE,
+    camera_index=CAMERA_INDEX,
     on_final_decision=record_final_decision,
+    decision_history_size=DECISION_HISTORY_SIZE,
+    grant_threshold=GRANT_THRESHOLD,
+    deny_threshold=DENY_THRESHOLD,
 )
+
+
+def get_active_configuration() -> dict[str, object]:
+    """Return the values currently used by the local dashboard service."""
+
+    return {
+        "model_path": str(live_feed_service.model_path),
+        "camera_index": live_feed_service.camera_index,
+        "detection_confidence": live_feed_service.confidence,
+        "iou_threshold": INFERENCE_IOU_THRESHOLD,
+        "image_size": INFERENCE_IMAGE_SIZE,
+        "decision_history_size": live_feed_service.decision_history_size,
+        "grant_threshold": live_feed_service.grant_threshold,
+        "deny_threshold": live_feed_service.deny_threshold,
+        "database_path": str(worker_database.database_path),
+        "log_path": str(LOG_PATH),
+        "snapshot_folder": str(SNAPSHOT_ROOT),
+        "flask_host": FLASK_HOST,
+        "flask_port": FLASK_PORT,
+    }
 
 
 def build_snapshot_url(snapshot_path: str) -> str:
@@ -94,11 +127,15 @@ def build_snapshot_url(snapshot_path: str) -> str:
     return url_for("snapshot_file", filename=str(relative_path))
 
 
-def load_events() -> list[dict]:
-    if not LOG_PATH.exists():
+def load_events(log_path: Path | None = None) -> list[dict]:
+    """Load recorded audit events, newest first."""
+
+    source_path = log_path or LOG_PATH
+
+    if not source_path.exists():
         return []
 
-    with LOG_PATH.open("r", newline="", encoding="utf-8") as file:
+    with source_path.open("r", newline="", encoding="utf-8") as file:
         events = list(csv.DictReader(file))
 
     for event in events:
@@ -122,6 +159,98 @@ def calculate_statistics(events: list[dict]) -> dict:
         "review": sum(
             event.get("status") == "MANAGER REVIEW" for event in events
         ),
+    }
+
+
+def extract_missing_ppe_categories(reason: str) -> list[str]:
+    """Extract explicitly recorded missing PPE names from a decision reason."""
+
+    missing_list = re.search(
+        r"Required PPE missing:\s*(.+?)(?:\.|$)",
+        reason,
+        flags=re.IGNORECASE,
+    )
+    if missing_list:
+        return [
+            category.strip().lower()
+            for category in missing_list.group(1).split(",")
+            if category.strip()
+        ]
+
+    missing_item = re.search(
+        r"(?:required )?(?:hi-vis )?([a-z-]+) is missing",
+        reason,
+        flags=re.IGNORECASE,
+    )
+    return [missing_item.group(1).lower()] if missing_item else []
+
+
+def calculate_report_analytics(events: list[dict]) -> dict:
+    """Summarise only the decisions and human actions stored in the CSV log."""
+
+    statistics = calculate_statistics(events)
+    missing_ppe = Counter()
+    worker_concerns: dict[str, dict] = {}
+
+    for event in events:
+        missing_ppe.update(
+            extract_missing_ppe_categories(event.get("reason", ""))
+        )
+
+        if event.get("status") not in {"ACCESS DENIED", "MANAGER REVIEW"}:
+            continue
+
+        worker_id = event.get("worker_id") or "Unknown worker"
+        concern = worker_concerns.setdefault(
+            worker_id,
+            {
+                "worker_id": worker_id,
+                "worker_name": event.get("worker_name") or "Unknown worker",
+                "denied": 0,
+                "review": 0,
+                "total": 0,
+            },
+        )
+        concern["total"] += 1
+        if event.get("status") == "ACCESS DENIED":
+            concern["denied"] += 1
+        else:
+            concern["review"] += 1
+
+    def recorded_review_status(event: dict) -> str:
+        return event.get("review_status") or event.get(
+            "override_status", ""
+        )
+
+    total = statistics["total"]
+    compliance_percentage = (
+        round((statistics["granted"] / total) * 100, 1)
+        if total
+        else None
+    )
+    common_ppe = sorted(
+        missing_ppe.items(),
+        key=lambda item: (-item[1], item[0]),
+    )
+    concerns = sorted(
+        worker_concerns.values(),
+        key=lambda concern: (-concern["total"], concern["worker_name"]),
+    )
+
+    return {
+        **statistics,
+        "human_overrides": sum(
+            recorded_review_status(event) == "OVERRIDDEN"
+            for event in events
+        ),
+        "denial_confirmations": sum(
+            recorded_review_status(event) == "DENIAL_CONFIRMED"
+            for event in events
+        ),
+        "compliance_percentage": compliance_percentage,
+        "most_common_missing_ppe": common_ppe[0][0] if common_ppe else None,
+        "most_common_missing_ppe_count": common_ppe[0][1] if common_ppe else 0,
+        "worker_concerns": concerns,
     }
 
 
@@ -160,31 +289,29 @@ def logs_page():
 
 @app.route("/reports")
 def reports_page():
+    events = load_events()
     return render_template(
-        "placeholder.html",
+        "reports.html",
         page="reports",
-        heading="Reports and Analytics",
-        description="Review site-entry trends and PPE violations.",
+        analytics=calculate_report_analytics(events),
+        recent_events=events[:10],
     )
 
 
 @app.route("/gate")
 def gate_page():
     return render_template(
-        "placeholder.html",
+        "gate.html",
         page="gate",
-        heading="Gate Control",
-        description="Monitor gate state and hardware connectivity.",
     )
 
 
 @app.route("/settings")
 def settings_page():
     return render_template(
-        "placeholder.html",
+        "settings.html",
         page="settings",
-        heading="System Settings",
-        description="Configure detection and hardware preferences.",
+        configuration=get_active_configuration(),
     )
 
 
@@ -256,4 +383,9 @@ def camera_status():
 if __name__ == "__main__":
     print("SafeGate AI dashboard starting...")
     print("Open http://127.0.0.1:5000")
-    app.run(host="127.0.0.1", port=5000, debug=False, use_reloader=False)
+    app.run(
+        host=FLASK_HOST,
+        port=FLASK_PORT,
+        debug=False,
+        use_reloader=False,
+    )

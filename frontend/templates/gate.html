@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}
+SafeGate AI | Gate Control
+{% endblock %}
+
+{% block page_title %}
+Gate Control
+{% endblock %}
+
+{% block page_description %}
+Read-only monitoring for the SafeGate gate-controller simulator
+{% endblock %}
+
+{% block content %}
+
+<section class="panel gate-monitor-panel">
+    <div class="panel-heading">
+        <div>
+            <h3>Simulated gate status</h3>
+            <p>Live state supplied by the dashboard verification service.</p>
+        </div>
+    </div>
+
+    <p class="gate-simulation-notice">
+        Simulation mode — no physical gate hardware is connected.
+    </p>
+
+    <dl class="gate-monitor-grid">
+        <div>
+            <dt>Gate state</dt>
+            <dd id="gate-monitor-state">LOCKED</dd>
+        </div>
+
+        <div>
+            <dt>Simulator mode</dt>
+            <dd id="gate-monitor-mode">SIMULATOR</dd>
+        </div>
+
+        <div>
+            <dt>Last command</dt>
+            <dd id="gate-monitor-command">LOCK</dd>
+        </div>
+
+        <div>
+            <dt>Camera status</dt>
+            <dd id="gate-monitor-camera">Stopped</dd>
+        </div>
+
+        <div>
+            <dt>Current worker</dt>
+            <dd id="gate-monitor-worker">No worker selected</dd>
+        </div>
+
+        <div>
+            <dt>Current access decision</dt>
+            <dd id="gate-monitor-decision">No access decision</dd>
+        </div>
+
+        <div class="gate-monitor-wide">
+            <dt>Reason</dt>
+            <dd id="gate-monitor-reason">Fail-safe locked state.</dd>
+        </div>
+
+        <div class="gate-monitor-wide">
+            <dt>Last updated</dt>
+            <dd id="gate-monitor-timestamp">Not available</dd>
+        </div>
+    </dl>
+</section>
+
+{% endblock %}

@@ -8,6 +8,7 @@ import cv2
 from camera import Camera
 from decision_engine import AccessDecision, DecisionEngine
 from detector import PPEDetector
+from gate_controller import GateController, SimulatedGateController
 from worker_db import Worker
 
 
@@ -26,11 +27,19 @@ class LiveFeedService:
         confidence: float = 0.25,
         camera_index: int = 0,
         on_final_decision: Optional[FinalDecisionHandler] = None,
+        gate_controller: Optional[GateController] = None,
+        decision_history_size: int = 15,
+        grant_threshold: int = 10,
+        deny_threshold: int = 10,
     ):
         self.model_path = Path(model_path)
         self.confidence = confidence
         self.camera_index = camera_index
         self.on_final_decision = on_final_decision
+        self.gate_controller = gate_controller or SimulatedGateController()
+        self.decision_history_size = decision_history_size
+        self.grant_threshold = grant_threshold
+        self.deny_threshold = deny_threshold
 
         self.detector: Optional[PPEDetector] = None
         self.camera: Optional[Camera] = None
@@ -55,6 +64,9 @@ class LiveFeedService:
         if self.running:
             return
 
+        self.gate_controller.lock(
+            "Camera starting; gate remains locked until access is granted."
+        )
         self.running = True
         self.error_message = ""
         self.thread = threading.Thread(
@@ -69,14 +81,18 @@ class LiveFeedService:
         with self.state_lock:
             self.current_worker = worker
             self.decision_engine = DecisionEngine(
-                history_size=15,
-                grant_threshold=10,
-                deny_threshold=10,
+                history_size=self.decision_history_size,
+                grant_threshold=self.grant_threshold,
+                deny_threshold=self.deny_threshold,
                 helmet_required=not worker.helmet_exempt,
             )
             self.latest_decision = None
             self.latest_detected_classes = []
             self.final_decision_recorded = False
+
+        self.gate_controller.lock(
+            "Worker selected; collecting PPE evidence before access decision."
+        )
 
     def clear_worker(self) -> None:
         """Clear the current session without stopping the camera."""
@@ -87,6 +103,8 @@ class LiveFeedService:
             self.latest_decision = None
             self.latest_detected_classes = []
             self.final_decision_recorded = False
+
+        self.gate_controller.lock("No worker selected; gate locked.")
 
     def _process_camera(self) -> None:
         """Capture frames, perform inference and update session state."""
@@ -122,6 +140,10 @@ class LiveFeedService:
                     ):
                         self.latest_decision = self.decision_engine.update(
                             detected_classes
+                        )
+                        self.gate_controller.apply_decision(
+                            self.latest_decision.status,
+                            self.latest_decision.reason,
                         )
 
                         if (
@@ -168,6 +190,9 @@ class LiveFeedService:
 
         except Exception as error:
             self.error_message = str(error)
+            self.gate_controller.lock(
+                f"Camera or detection error; gate locked: {error}"
+            )
             print(f"Live camera service error: {error}")
 
         finally:
@@ -176,6 +201,12 @@ class LiveFeedService:
 
             self.camera = None
             self.running = False
+            stop_reason = (
+                f"Camera stopped after error: {self.error_message}"
+                if self.error_message
+                else "Camera stopped; gate locked."
+            )
+            self.gate_controller.lock(stop_reason)
 
     @staticmethod
     def _draw_overlay(
@@ -285,6 +316,7 @@ class LiveFeedService:
                 "detected_classes": list(self.latest_detected_classes),
                 "worker": None,
                 "decision": None,
+                "gate": self.gate_controller.get_status(),
             }
 
             if self.current_worker is not None:
@@ -311,6 +343,7 @@ class LiveFeedService:
         """Stop camera processing safely without ending Flask."""
 
         self.running = False
+        self.gate_controller.lock("Camera stopped; gate locked.")
 
         if self.thread is not None and self.thread.is_alive():
             self.thread.join(timeout=2)

@@ -3,6 +3,10 @@ from pathlib import Path
 from ultralytics import YOLO
 
 
+INFERENCE_IOU_THRESHOLD = 0.45
+INFERENCE_IMAGE_SIZE = 640
+
+
 class PPEDetector:
     """Loads the SafeGate PPE model and detects PPE in video frames."""
 
@@ -28,8 +32,8 @@ class PPEDetector:
         results = self.model.predict(
             source=frame,
             conf=self.confidence,
-            iou=0.45,
-            imgsz=640,
+            iou=INFERENCE_IOU_THRESHOLD,
+            imgsz=INFERENCE_IMAGE_SIZE,
             verbose=False,
         )
 

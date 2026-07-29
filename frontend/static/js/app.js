@@ -44,7 +44,7 @@ function setSessionMessage(message, isError = false) {
 }
 
 
-function setGateState(status) {
+function setGateState(gateState) {
     const gate = document.getElementById("gate-status");
     const text = document.getElementById("gate-status-text");
     const icon = document.getElementById("gate-icon");
@@ -53,13 +53,17 @@ function setGateState(status) {
         return;
     }
 
+    const status = gateState?.state || "LOCKED";
+    const reason = document.getElementById("gate-status-reason");
+    const timestamp = document.getElementById("gate-status-timestamp");
+
     gate.classList.remove("locked", "open", "review");
 
-    if (status === "ACCESS GRANTED") {
+    if (status === "OPEN") {
         gate.classList.add("open");
         text.textContent = "OPEN — SIMULATION";
         icon.textContent = "🔓";
-    } else if (status === "MANAGER REVIEW") {
+    } else if (status === "REVIEW") {
         gate.classList.add("review");
         text.textContent = "REVIEW REQUIRED";
         icon.textContent = "⚠️";
@@ -68,11 +72,82 @@ function setGateState(status) {
         text.textContent = "LOCKED";
         icon.textContent = "🔒";
     }
+
+    if (reason) {
+        reason.textContent = gateState?.reason || "Fail-safe locked state.";
+    }
+
+    if (timestamp) {
+        timestamp.textContent = gateState?.timestamp
+            ? `Updated ${new Date(gateState.timestamp).toLocaleTimeString()}`
+            : "";
+    }
+}
+
+
+function setGateMonitorValue(elementId, value) {
+    const element = document.getElementById(elementId);
+
+    if (element) {
+        element.textContent = value;
+    }
+}
+
+
+function renderGateMonitor(state) {
+    const gate = state.gate || {};
+    const timestamp = gate.timestamp
+        ? new Date(gate.timestamp).toLocaleString()
+        : "Not available";
+    const worker = state.worker
+        ? `${state.worker.name} (${state.worker.worker_id})`
+        : "No worker selected";
+    const decision = state.decision
+        ? state.decision.status
+        : "No access decision";
+
+    setGateMonitorValue("gate-monitor-state", gate.state || "LOCKED");
+    setGateMonitorValue("gate-monitor-mode", gate.mode || "SIMULATOR");
+    setGateMonitorValue("gate-monitor-command", gate.last_command || "LOCK");
+    setGateMonitorValue("gate-monitor-reason", gate.reason || "Fail-safe locked state.");
+    setGateMonitorValue("gate-monitor-timestamp", timestamp);
+    setGateMonitorValue(
+        "gate-monitor-camera",
+        state.camera_running ? "Running" : "Stopped"
+    );
+    setGateMonitorValue("gate-monitor-worker", worker);
+    setGateMonitorValue("gate-monitor-decision", decision);
+}
+
+
+function renderSettingsStatus(state) {
+    const gate = state.gate || {};
+
+    setGateMonitorValue(
+        "settings-camera-status",
+        state.camera_running ? "Running" : "Stopped"
+    );
+    setGateMonitorValue(
+        "settings-camera-detail",
+        state.error || "No camera error reported."
+    );
+    setGateMonitorValue("settings-gate-state", gate.state || "LOCKED");
+    setGateMonitorValue("settings-gate-mode", gate.mode || "SIMULATOR");
+    setGateMonitorValue(
+        "settings-gate-command",
+        gate.last_command || "LOCK"
+    );
+    setGateMonitorValue(
+        "settings-gate-reason",
+        gate.reason || "Fail-safe locked state."
+    );
 }
 
 
 function renderLiveState(state) {
     setCameraStatus(state.camera_running);
+    renderGateMonitor(state);
+    renderSettingsStatus(state);
 
     if (!state.worker) {
         if (emptyWorkerState) {
@@ -83,7 +158,7 @@ function renderLiveState(state) {
             liveWorkerState.hidden = true;
         }
 
-        setGateState("ACCESS DENIED");
+        setGateState(state.gate);
         return;
     }
 
@@ -112,7 +187,7 @@ function renderLiveState(state) {
         ? `${decision.status}: ${decision.reason}`
         : "Initialising verification session.";
 
-    setGateState(decision ? decision.status : "MANAGER REVIEW");
+    setGateState(state.gate);
 }
 
 

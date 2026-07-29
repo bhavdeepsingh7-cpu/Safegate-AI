@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block title %}
+SafeGate AI | System Settings
+{% endblock %}
+
+{% block page_title %}
+System Settings and Hardware Readiness
+{% endblock %}
+
+{% block page_description %}
+Read-only view of the active local SafeGate configuration
+{% endblock %}
+
+{% block content %}
+
+<section class="prototype-notice" role="note">
+    This page is read-only. It displays the configuration currently used by
+    the local application and does not change running settings.
+</section>
+
+<section class="panel settings-panel">
+    <div class="panel-heading">
+        <div>
+            <h3>Active software configuration</h3>
+            <p>Values supplied by the running Flask dashboard code.</p>
+        </div>
+    </div>
+    <dl class="settings-grid">
+        <div><dt>Model path</dt><dd>{{ configuration.model_path }}</dd></div>
+        <div><dt>Camera index</dt><dd>{{ configuration.camera_index }}</dd></div>
+        <div><dt>Detection confidence</dt><dd>{{ configuration.detection_confidence }}</dd></div>
+        <div><dt>IoU threshold</dt><dd>{{ configuration.iou_threshold }}</dd></div>
+        <div><dt>Image size</dt><dd>{{ configuration.image_size }} px</dd></div>
+        <div><dt>Decision history size</dt><dd>{{ configuration.decision_history_size }} frames</dd></div>
+        <div><dt>Grant threshold</dt><dd>{{ configuration.grant_threshold }} frames</dd></div>
+        <div><dt>Deny threshold</dt><dd>{{ configuration.deny_threshold }} frames</dd></div>
+        <div><dt>SQLite database path</dt><dd>{{ configuration.database_path }}</dd></div>
+        <div><dt>CSV audit-log path</dt><dd>{{ configuration.log_path }}</dd></div>
+        <div><dt>Snapshot folder</dt><dd>{{ configuration.snapshot_folder }}</dd></div>
+        <div><dt>Flask host and port</dt><dd>{{ configuration.flask_host }}:{{ configuration.flask_port }}</dd></div>
+    </dl>
+</section>
+
+<section class="settings-status-grid">
+    <article class="panel">
+        <div class="panel-heading">
+            <div><h3>Camera status</h3><p>Live dashboard camera-service state.</p></div>
+        </div>
+        <dl class="report-summary-list">
+            <div><dt>Status</dt><dd id="settings-camera-status">Stopped</dd></div>
+            <div><dt>Detail</dt><dd id="settings-camera-detail">No camera error reported.</dd></div>
+        </dl>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div><h3>Gate-controller status</h3><p>Live state from the safe simulator.</p></div>
+        </div>
+        <dl class="report-summary-list">
+            <div><dt>Gate state</dt><dd id="settings-gate-state">LOCKED</dd></div>
+            <div><dt>Mode</dt><dd id="settings-gate-mode">SIMULATOR</dd></div>
+            <div><dt>Last command</dt><dd id="settings-gate-command">LOCK</dd></div>
+            <div><dt>Reason</dt><dd id="settings-gate-reason">Fail-safe locked state.</dd></div>
+        </dl>
+    </article>
+</section>
+
+<section class="panel settings-panel">
+    <div class="panel-heading">
+        <div><h3>Hardware readiness</h3><p>Current implementation status; no physical hardware is connected.</p></div>
+    </div>
+    <dl class="settings-grid">
+        <div><dt>Gate controller</dt><dd>Implemented simulator only — no physical gate hardware connected.</dd></div>
+        <div><dt>Arduino Nano integration</dt><dd>Planned; no serial or Arduino code is implemented.</dd></div>
+        <div><dt>Raspberry Pi deployment</dt><dd>Planned; not configured or verified.</dd></div>
+        <div><dt>RFID identification</dt><dd>Optional and planned; no reader is connected.</dd></div>
+    </dl>
+</section>
+
+{% endblock %}

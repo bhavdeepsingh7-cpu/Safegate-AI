@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}
+SafeGate AI | Reports and Analytics
+{% endblock %}
+
+{% block page_title %}
+Reports and Analytics
+{% endblock %}
+
+{% block page_description %}
+Local audit-record summaries for operator review
+{% endblock %}
+
+{% block content %}
+
+<section class="prototype-notice" role="note">
+    Prototype analytics based only on local CSV audit records. These summaries
+    are not accuracy, safety, legal-compliance, or performance measurements.
+</section>
+
+<section class="statistics-grid">
+    <article class="stat-card">
+        <div><p>Total access decisions</p><h3>{{ analytics.total }}</h3></div>
+        <div class="stat-icon neutral">↗</div>
+    </article>
+    <article class="stat-card">
+        <div><p>Access granted</p><h3 class="text-success">{{ analytics.granted }}</h3></div>
+        <div class="stat-icon success">✓</div>
+    </article>
+    <article class="stat-card">
+        <div><p>Access denied</p><h3 class="text-danger">{{ analytics.denied }}</h3></div>
+        <div class="stat-icon danger">×</div>
+    </article>
+    <article class="stat-card">
+        <div><p>Manager review</p><h3 class="text-warning">{{ analytics.review }}</h3></div>
+        <div class="stat-icon warning">!</div>
+    </article>
+    <article class="stat-card">
+        <div><p>Human overrides</p><h3>{{ analytics.human_overrides }}</h3></div>
+        <div class="stat-icon neutral">✓</div>
+    </article>
+    <article class="stat-card">
+        <div><p>Denial confirmations</p><h3>{{ analytics.denial_confirmations }}</h3></div>
+        <div class="stat-icon neutral">✓</div>
+    </article>
+</section>
+
+<section class="reports-grid">
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <h3>PPE decision summary</h3>
+                <p>Calculated from recorded automated access decisions.</p>
+            </div>
+        </div>
+        <dl class="report-summary-list">
+            <div>
+                <dt>PPE compliance percentage</dt>
+                <dd>
+                    {% if analytics.compliance_percentage is not none %}
+                        {{ analytics.compliance_percentage }}%
+                    {% else %}
+                        No decisions recorded
+                    {% endif %}
+                </dd>
+                <small>Access granted ÷ total access decisions × 100</small>
+            </div>
+            <div>
+                <dt>Most common missing PPE</dt>
+                <dd>
+                    {% if analytics.most_common_missing_ppe %}
+                        {{ analytics.most_common_missing_ppe | capitalize }}
+                    {% else %}
+                        No missing PPE category recorded
+                    {% endif %}
+                </dd>
+                <small>
+                    {% if analytics.most_common_missing_ppe %}
+                        Mentioned in {{ analytics.most_common_missing_ppe_count }} stored decision reason(s)
+                    {% else %}
+                        Derived only from recorded decision-reason text.
+                    {% endif %}
+                </small>
+            </div>
+        </dl>
+    </article>
+
+    <article class="panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Repeat safety concerns by worker</h3>
+                <p>Denied and manager-review events in the local audit log.</p>
+            </div>
+        </div>
+        {% if analytics.worker_concerns %}
+            <div class="table-wrapper">
+                <table class="data-table report-table">
+                    <thead><tr><th>Worker</th><th>Denied</th><th>Review</th><th>Total concerns</th></tr></thead>
+                    <tbody>
+                        {% for concern in analytics.worker_concerns %}
+                            <tr>
+                                <td>{{ concern.worker_name }} <span class="muted">({{ concern.worker_id }})</span></td>
+                                <td>{{ concern.denied }}</td>
+                                <td>{{ concern.review }}</td>
+                                <td>{{ concern.total }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="empty-report">No denied or manager-review events are recorded.</p>
+        {% endif %}
+    </article>
+</section>
+
+<section class="panel recent-events-panel">
+    <div class="panel-heading">
+        <div><h3>Recent local audit activity</h3><p>Latest ten recorded decisions.</p></div>
+    </div>
+    {% if recent_events %}
+        <div class="table-wrapper">
+            <table class="data-table report-table">
+                <thead><tr><th>Time</th><th>Worker</th><th>Automated decision</th><th>Human action</th></tr></thead>
+                <tbody>
+                    {% for event in recent_events %}
+                        <tr>
+                            <td>{{ event.timestamp }}</td>
+                            <td>{{ event.worker_name }} <span class="muted">({{ event.worker_id }})</span></td>
+                            <td>{{ event.status }}</td>
+                            <td>{{ event.review_status or "—" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <p class="empty-report">No local audit records are available yet.</p>
+    {% endif %}
+</section>
+
+{% endblock %}
