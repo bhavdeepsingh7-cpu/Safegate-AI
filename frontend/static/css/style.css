@@ -498,6 +498,16 @@ a {
     background: rgba(255, 99, 123, 0.08);
 }
 
+.gate-status.open {
+    border: 1px solid rgba(56, 216, 139, 0.25);
+    background: rgba(56, 216, 139, 0.08);
+}
+
+.gate-status.review {
+    border: 1px solid rgba(244, 196, 94, 0.25);
+    background: rgba(244, 196, 94, 0.08);
+}
+
 .gate-status small,
 .gate-status strong {
     display: block;
@@ -512,6 +522,14 @@ a {
     margin-top: 4px;
     color: var(--danger);
     font-size: 15px;
+}
+
+.gate-status.open strong {
+    color: var(--success);
+}
+
+.gate-status.review strong {
+    color: var(--warning);
 }
 
 .gate-icon {
@@ -728,4 +746,99 @@ a {
 .camera-control-button:disabled {
     cursor: not-allowed;
     opacity: 0.45;
+}
+
+.worker-session-form {
+    margin-bottom: 14px;
+}
+
+.worker-session-form label {
+    display: block;
+    margin-bottom: 7px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.worker-session-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.worker-session-controls select {
+    min-width: 0;
+    flex: 1;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    padding: 8px;
+}
+
+.session-message {
+    margin: 9px 0 0;
+    color: var(--muted);
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.session-message.error {
+    color: var(--danger);
+}
+
+.worker-live-state {
+    flex: 1;
+    padding: 10px 0 18px;
+}
+
+.worker-identity {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.worker-identity h4,
+.worker-identity p {
+    margin: 0;
+}
+
+.worker-identity p {
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 12px;
+}
+
+.worker-facts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 18px 0 0;
+}
+
+.worker-facts div {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px;
+}
+
+.worker-facts dt {
+    color: var(--muted);
+    font-size: 10px;
+}
+
+.worker-facts dd {
+    margin: 5px 0 0;
+    font-size: 11px;
+    font-weight: 700;
+}
+
+.clear-session-button {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface-soft);
+    color: var(--text);
+    cursor: pointer;
+    padding: 8px 11px;
+    font-size: 11px;
+    font-weight: 700;
 }

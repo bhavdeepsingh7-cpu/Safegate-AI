@@ -30,3 +30,7 @@ runs/
 
 # IDE
 .idea/
+
+# Local project guidance
+AGENTS.md
+PROJECT_ROADMAP.md

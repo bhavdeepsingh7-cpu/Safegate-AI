@@ -176,24 +176,92 @@ Live PPE verification and construction-site access monitoring
             </div>
         </div>
 
-        <div class="empty-worker">
-            <div class="worker-avatar">?</div>
+        <form id="worker-session-form" class="worker-session-form">
+            <label for="worker-id-input">Worker ID</label>
 
-            <h4>Waiting for worker</h4>
+            <div class="worker-session-controls">
+                <select id="worker-id-input" required>
+                    <option value="">Select a worker</option>
 
-            <p>
-                Enter or scan a registered worker ID to begin
-                PPE verification.
-            </p>
-        </div>
+                    {% for worker in workers %}
+                        <option
+                            value="{{ worker.worker_id }}"
+                            {% if not worker.active %}disabled{% endif %}
+                        >
+                            {{ worker.worker_id }} — {{ worker.name }}
+                            {% if not worker.active %}(inactive){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
 
-        <div class="gate-status locked">
-            <div>
-                <small>Gate status</small>
-                <strong>LOCKED</strong>
+                <button class="camera-control-button start" type="submit">
+                    Verify worker
+                </button>
             </div>
 
-            <span class="gate-icon">🔒</span>
+            <p id="session-message" class="session-message">
+                Select an active worker to begin PPE verification.
+            </p>
+        </form>
+
+        <div id="worker-empty-state" class="empty-worker">
+            <div class="worker-avatar">?</div>
+            <h4>Waiting for worker</h4>
+            <p>Select an active worker to begin PPE verification.</p>
+        </div>
+
+        <div id="worker-live-state" class="worker-live-state" hidden>
+            <div class="worker-identity">
+                <div id="worker-avatar" class="worker-avatar">?</div>
+
+                <div>
+                    <h4 id="worker-name">Waiting for worker</h4>
+                    <p id="worker-role">No active session</p>
+                </div>
+            </div>
+
+            <dl class="worker-facts">
+                <div>
+                    <dt>Worker ID</dt>
+                    <dd id="worker-id">—</dd>
+                </div>
+
+                <div>
+                    <dt>Helmet policy</dt>
+                    <dd id="worker-policy">—</dd>
+                </div>
+
+                <div>
+                    <dt>Helmet evidence</dt>
+                    <dd id="helmet-evidence">Collecting frames</dd>
+                </div>
+
+                <div>
+                    <dt>Vest evidence</dt>
+                    <dd id="vest-evidence">Collecting frames</dd>
+                </div>
+            </dl>
+
+            <p id="decision-reason" class="session-message">
+                Collecting frames for a stable decision.
+            </p>
+
+            <button
+                id="clear-session-button"
+                class="clear-session-button"
+                type="button"
+            >
+                Clear session
+            </button>
+        </div>
+
+        <div id="gate-status" class="gate-status locked">
+            <div>
+                <small>Gate status</small>
+                <strong id="gate-status-text">LOCKED</strong>
+            </div>
+
+            <span id="gate-icon" class="gate-icon">🔒</span>
         </div>
     </article>
 

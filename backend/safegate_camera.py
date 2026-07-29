@@ -28,11 +28,12 @@ while True:
         break
 
     results = model.predict(
-        source=frame,
-        conf=0.40,
-        verbose=False
-    )
-
+      source=frame,
+      conf=0.25,
+      iou=0.45,
+      imgsz=640,
+    verbose=False
+  )
     display_frame = results[0].plot()
 
     cv2.putText(
