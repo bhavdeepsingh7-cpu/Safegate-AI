@@ -5,7 +5,7 @@
 SafeGate AI is an academic and portfolio prototype for construction-site access screening. It combines a local camera, a trained YOLO PPE model, a policy-aware decision engine and an operator dashboard. The repository also contains a SQLite worker register, CSV event audit trail and evidence snapshots for denied or uncertain automated decisions.
 
 > [!IMPORTANT]
-> This is a prototype, not a safety-certified access-control system. It has no implemented gate actuator, RFID reader or manager-override action. Human oversight remains necessary.
+> This is a prototype, not a safety-certified access-control system. It has no implemented gate actuator or RFID reader. Manager overrides are recorded as human audit decisions and do not operate a gate. Human oversight remains necessary.
 
 ## Contents
 
@@ -30,7 +30,7 @@ Construction sites need a consistent way to check whether people entering a work
 
 The terminal application in `backend/app.py` asks an operator to enter a worker ID, checks the local SQLite record and derives whether a helmet is required from that worker's approved policy. It samples a 15-frame detection history, then issues **ACCESS GRANTED**, **ACCESS DENIED**, or **MANAGER REVIEW**. Non-scanning outcomes are appended to a CSV file; denied and review outcomes also create a JPEG snapshot.
 
-Separately, `backend/dashboard.py` serves a Flask dashboard. Its live-camera service streams annotated YOLO frames as MJPEG, lets an operator select an active worker, applies the same 15-frame policy, and records one completed decision to the CSV log. Denied and review dashboard decisions also create JPEG snapshots. The displayed gate state is a visual indication only; no gate-controller abstraction or hardware control is implemented.
+Separately, `backend/dashboard.py` serves a Flask dashboard. Its live-camera service streams annotated YOLO frames as MJPEG, lets an operator select an active worker, applies the same 15-frame policy, and records one completed decision to the CSV log. Denied and review dashboard decisions also create JPEG snapshots. A local gate-controller simulator maps each live decision to a visible, fail-safe gate state; it has no hardware control.
 
 ## Features and status
 
@@ -59,7 +59,8 @@ Separately, `backend/dashboard.py` serves a Flask dashboard. Its live-camera ser
 ### Hardware
 
 - **Implemented:** webcam input through OpenCV.
-- **Planned:** Arduino, Raspberry Pi, servo gate, LEDs, buzzer and RFID. No related source files or hardware-control logic are present.
+- **Implemented:** an in-memory gate-controller simulator; it records `OPEN`, `LOCK` or `REVIEW` commands without communicating with hardware.
+- **Planned:** Arduino, Raspberry Pi, servo gate, LEDs, buzzer and RFID. No hardware-control logic is present.
 
 ### Current implementation status
 
@@ -76,10 +77,13 @@ Separately, `backend/dashboard.py` serves a Flask dashboard. Its live-camera ser
 | Repeat-violation warning | Implemented | `violation_tracker.py` counts denied/review CSV entries against threshold 3. |
 | Flask dashboard | Implemented | `dashboard.py` renders dashboard pages, reads log data and serves snapshots. |
 | Live MJPEG dashboard stream | Implemented | `live_feed.py` runs a background detector and yields `multipart/x-mixed-replace` JPEG frames. |
-| Dashboard worker-management UI | In Progress | The dashboard can select an active worker for verification, but `/workers` is a placeholder and no web CRUD routes exist. |
-| Dashboard logs, reports, gate and settings | In Progress | Routes render placeholders only. |
-| Manager override | In Progress | CSV fields and display conditions exist, but there is no route or function to record an override. |
-| Dashboard decision integration | Implemented | An active worker can be selected in the dashboard; the live feed applies the decision engine and records one final event, with snapshots for denied/review outcomes. The gate state is visual only. |
+| Dashboard worker-management UI | Implemented | `/workers` lists, searches, adds, edits, activates/deactivates and deletes local SQLite worker records. |
+| Dashboard reports analytics | Implemented | `/reports` summarises only local CSV audit records, including decision counts, recorded human actions, explicit missing-PPE reasons and repeat denied/review concerns. |
+| Dashboard settings | Implemented | `/settings` is a read-only view of active local software values, live camera/simulator state and planned hardware readiness. |
+| Dashboard logs | In Progress | Logs focus on manager review rather than general log search. |
+| Manager review resolution | Implemented | The Access Logs page records either an override approval or denial confirmation, with the manager's name, reason and timestamp, while preserving the original automated decision, reason and evidence. |
+| Dashboard decision integration | Implemented | An active worker can be selected in the dashboard; the live feed applies the decision engine, records one final event, and updates the gate simulator, with snapshots for denied/review outcomes. |
+| Gate-controller simulator | Implemented | `gate_controller.py` maps grants to `OPEN`, denials and incomplete/error states to `LOCKED`, and manager reviews to `REVIEW`; no hardware is contacted. |
 | Training configuration | In Progress | `train_ppe.py` references `construction-ppe.yaml`, but the checked-in file is `datasets/construction-ppe/data.yaml`; the script also fixes `device="mps"`. |
 | RFID and physical gate control | Planned | No implementation is present. |
 
@@ -97,6 +101,7 @@ flowchart TB
     POLICY --> ENGINE
     ENGINE --> LOG[CSV event logger]
     ENGINE --> SNAP[Snapshot manager\ndenied/review only]
+    ENGINE --> GATE_SIM[Gate-controller simulator\nOPEN / LOCKED / REVIEW]
     LOG --> DASH[Flask dashboard\nreads CSV]
     SNAP --> DASH
     CAM --> STREAM[LiveFeedService\nannotated MJPEG]
@@ -117,7 +122,7 @@ flowchart TB
     RFID --> PI
   end
 
-  ENGINE -. future decision output .-> GATE
+  GATE_SIM -. future commands .-> GATE
   RFID -. future identification input .-> ID
 ```
 
@@ -180,7 +185,7 @@ flowchart TD
   REVIEW --> EVIDENCE
   CSV --> DASH[Dashboard update on next page load]
   EVIDENCE --> DASH
-  REVIEW -. manual override not implemented .-> OVERRIDE[Future manager override]
+  REVIEW -. human audit decision; no gate action .-> OVERRIDE[Manager override]
   GRANT -. future .-> GATE[Future gate control]
   DENY -. future .-> GATE
   REVIEW -. future .-> GATE
@@ -201,6 +206,7 @@ SafeGate-AI/
 │   ├── live_feed.py            # threaded YOLO MJPEG stream
 │   ├── detector.py             # Ultralytics YOLO wrapper
 │   ├── decision_engine.py      # frame-history PPE decision policy
+│   ├── gate_controller.py      # fail-safe simulated gate-controller interface
 │   ├── worker_db.py            # SQLite worker records and CRUD
 │   ├── event_logger.py         # CSV event writer
 │   ├── snapshot_manager.py     # JPEG evidence writer
@@ -352,6 +358,11 @@ python backend/test_system.py
 python backend/test_worker_crud.py
 python backend/test_worker_db.py
 python backend/test_yolo.py
+python backend/test_manager_overrides.py
+python backend/test_gate_controller.py
+python backend/test_gate_page.py
+python backend/test_reports.py
+python backend/test_settings_page.py
 ```
 
 The first four scripts were run successfully in the repository’s Python 3.12.2 virtual environment during this documentation audit. `test_yolo.py` was not run here because it loads a model and can initialise the Ultralytics runtime; it only checks that `yolo11n.pt` can be loaded. No camera-based test was executed because it needs physical webcam access.
@@ -364,6 +375,11 @@ The first four scripts were run successfully in the repository’s Python 3.12.2
 | `test_worker_db.py` | Lists demo workers and asserts the record for ID `1001`. |
 | `test_detector.py` | Attempts to instantiate the PPE detector; it prints a missing-model error rather than asserting it. |
 | `test_yolo.py` | Loads the base YOLO model. |
+| `test_manager_overrides.py` | Override and denial-confirmation audit actions, required manager details, pending-queue filtering and preservation of automated event fields. |
+| `test_gate_controller.py` | Fail-safe simulator default and every live decision-to-gate mapping. |
+| `test_gate_page.py` | Read-only gate-monitor route, simulator notice, live-state fields and absence of manual-control buttons. |
+| `test_reports.py` | Local CSV analytics calculations, empty/missing-log handling, CSV loading and reports-route rendering. |
+| `test_settings_page.py` | Read-only settings route, active values, readiness statements and absence of configuration controls. |
 
 > [!CAUTION]
 > Running `test_system.py` creates `logs/test_access_events.csv` and `logs/test_snapshots/`; `test_worker_crud.py` creates then removes `data/test_worker_crud.db`. These are expected test side effects.
@@ -388,9 +404,9 @@ The first four scripts were run successfully in the repository’s Python 3.12.2
 
 ### Current limitations
 
-- Dashboard verification is limited to a single in-memory selected-worker session. Its gate display is visual only: no gate-controller abstraction, simulator command state or hardware control is implemented.
-- There is no web UI for worker CRUD, log search, reports, settings, gate control or manager override; corresponding dashboard pages are placeholders.
-- The event CSV has override columns, but no implementation writes override values.
+- Dashboard verification is limited to a single in-memory selected-worker session. Its gate controller is an in-memory simulator, not an actuator or safety interlock.
+- Logs remain incomplete; the Access Logs page currently focuses on manager review rather than general log search.
+- Manager overrides are unauthenticated local audit entries and do not open a gate or control hardware.
 - The detector extracts classes for boots, gloves and goggles, but access decisions only use helmet and vest states.
 - Camera/model/configuration failures are reported at runtime; no structured configuration, authentication or deployment setup exists.
 - Training is not currently reproducible from the supplied script because its dataset YAML path does not match the checked-in file, and it is tied to MPS.
@@ -410,7 +426,7 @@ The first four scripts were run successfully in the repository’s Python 3.12.2
 - [x] Connect dashboard worker/session state to the decision engine and event pipeline
 - [ ] Complete the dashboard worker, logs, reports, gate and settings pages
 - [ ] Align and validate the training dataset configuration
-- [ ] Implement an auditable human manager-override workflow
+- [x] Implement an auditable human manager-override workflow
 
 **Planned**
 

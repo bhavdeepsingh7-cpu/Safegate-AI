@@ -7,6 +7,7 @@ from flask import (
     Flask,
     Response,
     jsonify,
+    redirect,
     render_template,
     request,
     send_from_directory,
@@ -138,7 +139,8 @@ def load_events(log_path: Path | None = None) -> list[dict]:
     with source_path.open("r", newline="", encoding="utf-8") as file:
         events = list(csv.DictReader(file))
 
-    for event in events:
+    for event_index, event in enumerate(events):
+        event["event_index"] = event_index
         event["snapshot_url"] = build_snapshot_url(
             event.get("snapshot_path", "")
         )
@@ -254,6 +256,88 @@ def calculate_report_analytics(events: list[dict]) -> dict:
     }
 
 
+def render_workers_page(
+    search_query: str = "",
+    editing_worker: Worker | None = None,
+):
+    """Render the worker-management page with an optional search or edit."""
+
+    workers = (
+        worker_database.search_workers(search_query)
+        if search_query
+        else worker_database.list_workers()
+    )
+
+    return render_template(
+        "workers.html",
+        page="workers",
+        workers=workers,
+        search_query=search_query,
+        editing_worker=editing_worker,
+        message=request.args.get("message", ""),
+        message_type=request.args.get("message_type", "success"),
+    )
+
+
+def workers_redirect(
+    message: str,
+    message_type: str = "success",
+):
+    """Redirect to worker management with a user-facing result message."""
+
+    return redirect(
+        url_for(
+            "workers_page",
+            message=message,
+            message_type=message_type,
+        )
+    )
+
+
+def logs_redirect(
+    message: str,
+    message_type: str = "success",
+):
+    """Redirect to access logs with a user-facing result message."""
+
+    return redirect(
+        url_for(
+            "logs_page",
+            message=message,
+            message_type=message_type,
+        )
+    )
+
+
+def worker_from_form(worker_id: str) -> Worker | None:
+    """Validate form values and create a worker record for add or edit."""
+
+    name = request.form.get("name", "").strip()
+    role = request.form.get("role", "").strip()
+
+    if not worker_id or not name or not role:
+        return None
+
+    return Worker(
+        worker_id=worker_id,
+        name=name,
+        role=role,
+        helmet_exempt=request.form.get("helmet_exempt") == "on",
+        active=request.form.get("active") == "on",
+        notes=request.form.get("notes", "").strip(),
+    )
+
+
+def worker_is_in_active_session(worker_id: str) -> bool:
+    """Return whether the live verification session currently uses this worker."""
+
+    current_worker = live_feed_service.get_live_state().get("worker")
+    return bool(
+        current_worker
+        and current_worker.get("worker_id") == worker_id
+    )
+
+
 @app.route("/")
 def dashboard():
     events = load_events()
@@ -269,21 +353,155 @@ def dashboard():
 
 @app.route("/workers")
 def workers_page():
-    return render_template(
-        "placeholder.html",
-        page="workers",
-        heading="Worker Management",
-        description="Add, edit, search and manage registered workers.",
+    return render_workers_page(
+        search_query=request.args.get("search", "").strip()
     )
+
+
+@app.route("/workers", methods=["POST"])
+def add_worker():
+    worker = worker_from_form(
+        request.form.get("worker_id", "").strip()
+    )
+
+    if worker is None:
+        return workers_redirect(
+            "Worker ID, name, and role are required.",
+            "error",
+        )
+
+    if not worker_database.add_worker(worker):
+        return workers_redirect(
+            f"Worker ID {worker.worker_id} already exists.",
+            "error",
+        )
+
+    return workers_redirect(f"Added worker {worker.name}.")
+
+
+@app.route("/workers/<worker_id>/edit")
+def edit_worker_page(worker_id: str):
+    worker = worker_database.get_worker(worker_id)
+
+    if worker is None:
+        return workers_redirect("Worker record was not found.", "error")
+
+    return render_workers_page(editing_worker=worker)
+
+
+@app.route("/workers/<worker_id>/edit", methods=["POST"])
+def update_worker(worker_id: str):
+    if worker_database.get_worker(worker_id) is None:
+        return workers_redirect("Worker record was not found.", "error")
+
+    worker = worker_from_form(worker_id)
+
+    if worker is None:
+        return workers_redirect(
+            "Worker name and role are required.",
+            "error",
+        )
+
+    if not worker_database.update_worker(worker):
+        return workers_redirect("Worker record could not be updated.", "error")
+
+    return workers_redirect(f"Updated worker {worker.name}.")
+
+
+@app.route("/workers/<worker_id>/status", methods=["POST"])
+def set_worker_status(worker_id: str):
+    active = request.form.get("active") == "true"
+
+    if not worker_database.set_worker_active(worker_id, active):
+        return workers_redirect("Worker record was not found.", "error")
+
+    status = "activated" if active else "deactivated"
+    return workers_redirect(f"Worker {worker_id} {status}.")
+
+
+@app.route("/workers/<worker_id>/delete", methods=["POST"])
+def delete_worker(worker_id: str):
+    if worker_is_in_active_session(worker_id):
+        return workers_redirect(
+            "Clear the active verification session before deleting this worker.",
+            "error",
+        )
+
+    if not worker_database.delete_worker(worker_id):
+        return workers_redirect("Worker record was not found.", "error")
+
+    return workers_redirect(f"Deleted worker {worker_id}.")
 
 
 @app.route("/logs")
 def logs_page():
+    events = load_events()
+    review_events = [
+        event
+        for event in events
+        if (
+            event.get("status") in {"ACCESS DENIED", "MANAGER REVIEW"}
+            and event.get("review_status") == "PENDING"
+        )
+    ]
     return render_template(
-        "placeholder.html",
+        "logs.html",
         page="logs",
-        heading="Access Logs",
-        description="Search access decisions, evidence and overrides.",
+        events=events,
+        review_events=review_events,
+        message=request.args.get("message", ""),
+        message_type=request.args.get("message_type", "success"),
+    )
+
+
+@app.route("/logs/<int:event_index>/override", methods=["POST"])
+def approve_override(event_index: int):
+    manager_name = request.form.get("manager_name", "").strip()
+    manager_reason = request.form.get("manager_reason", "").strip()
+
+    if not manager_name or not manager_reason:
+        return logs_redirect(
+            "Manager name and reason are required.",
+            "error",
+        )
+
+    if not event_logger.record_manager_action(
+        event_index=event_index,
+        manager_name=manager_name,
+        manager_reason=manager_reason,
+        review_status="OVERRIDDEN",
+    ):
+        return logs_redirect(
+            "This event cannot be resolved or has already been reviewed.",
+            "error",
+        )
+
+    return logs_redirect(
+        "Human override recorded. The automated decision remains unchanged."
+    )
+
+
+@app.route("/logs/<int:event_index>/confirm-denial", methods=["POST"])
+def confirm_denial(event_index: int):
+    manager_name = request.form.get("manager_name", "").strip()
+    manager_reason = request.form.get("manager_reason", "").strip()
+
+    if not manager_name or not manager_reason:
+        return logs_redirect("Manager name and reason are required.", "error")
+
+    if not event_logger.record_manager_action(
+        event_index=event_index,
+        manager_name=manager_name,
+        manager_reason=manager_reason,
+        review_status="DENIAL_CONFIRMED",
+    ):
+        return logs_redirect(
+            "This event cannot be resolved or has already been reviewed.",
+            "error",
+        )
+
+    return logs_redirect(
+        "Denial confirmation recorded. The automated decision remains unchanged."
     )
 
 

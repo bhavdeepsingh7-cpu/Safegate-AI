@@ -1,0 +1,205 @@
+{% extends "base.html" %}
+
+{% block title %}
+SafeGate AI | Worker Management
+{% endblock %}
+
+{% block page_title %}
+Worker Management
+{% endblock %}
+
+{% block page_description %}
+Manage local worker records and approved PPE policy settings
+{% endblock %}
+
+{% block content %}
+
+<section class="policy-notice">
+    <h3>Helmet-exemption policy</h3>
+
+    <p>
+        This is a human-managed worker-policy record. SafeGate does not
+        infer religion or any protected characteristic from camera images.
+        A helmet exemption never removes the vest requirement.
+    </p>
+</section>
+
+{% if message %}
+    <p class="form-message {{ message_type }}" role="status">
+        {{ message }}
+    </p>
+{% endif %}
+
+<section class="workers-layout">
+    <article class="panel worker-form-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>
+                    {% if editing_worker %}Edit worker{% else %}Add worker{% endif %}
+                </h3>
+                <p>Required fields are marked with an asterisk.</p>
+            </div>
+        </div>
+
+        <form
+            class="worker-record-form"
+            method="post"
+            action="{% if editing_worker %}{{ url_for('update_worker', worker_id=editing_worker.worker_id) }}{% else %}{{ url_for('add_worker') }}{% endif %}"
+        >
+            <label for="worker-id">Worker ID *</label>
+            <input
+                id="worker-id"
+                name="worker_id"
+                type="text"
+                value="{{ editing_worker.worker_id if editing_worker else '' }}"
+                {% if editing_worker %}readonly{% endif %}
+                required
+            >
+
+            <label for="worker-name">Name *</label>
+            <input
+                id="worker-name"
+                name="name"
+                type="text"
+                value="{{ editing_worker.name if editing_worker else '' }}"
+                required
+            >
+
+            <label for="worker-role">Role *</label>
+            <input
+                id="worker-role"
+                name="role"
+                type="text"
+                value="{{ editing_worker.role if editing_worker else '' }}"
+                required
+            >
+
+            <label for="worker-notes">Notes</label>
+            <textarea id="worker-notes" name="notes" rows="4">{{ editing_worker.notes if editing_worker else '' }}</textarea>
+
+            <label class="checkbox-label" for="helmet-exempt">
+                <input
+                    id="helmet-exempt"
+                    name="helmet_exempt"
+                    type="checkbox"
+                    {% if editing_worker and editing_worker.helmet_exempt %}checked{% endif %}
+                >
+                Approved helmet exemption
+            </label>
+
+            <label class="checkbox-label" for="worker-active">
+                <input
+                    id="worker-active"
+                    name="active"
+                    type="checkbox"
+                    {% if not editing_worker or editing_worker.active %}checked{% endif %}
+                >
+                Worker is active
+            </label>
+
+            <div class="form-actions">
+                <button class="primary-button" type="submit">
+                    {% if editing_worker %}Save changes{% else %}Add worker{% endif %}
+                </button>
+
+                {% if editing_worker %}
+                    <a class="secondary-button" href="{{ url_for('workers_page') }}">
+                        Cancel
+                    </a>
+                {% endif %}
+            </div>
+        </form>
+    </article>
+
+    <article class="panel worker-list-panel">
+        <div class="panel-heading">
+            <div>
+                <h3>Registered workers</h3>
+                <p>{{ workers|length }} record{% if workers|length != 1 %}s{% endif %} shown</p>
+            </div>
+        </div>
+
+        <form class="worker-search-form" method="get" action="{{ url_for('workers_page') }}">
+            <label for="worker-search">Search worker ID, name or role</label>
+            <div>
+                <input
+                    id="worker-search"
+                    name="search"
+                    type="search"
+                    value="{{ search_query }}"
+                    placeholder="e.g. 1002, electrician"
+                >
+                <button class="secondary-button" type="submit">Search</button>
+                {% if search_query %}
+                    <a class="text-link" href="{{ url_for('workers_page') }}">Clear</a>
+                {% endif %}
+            </div>
+        </form>
+
+        {% if workers %}
+            <div class="table-wrapper">
+                <table class="data-table workers-table">
+                    <thead>
+                        <tr>
+                            <th>Worker</th>
+                            <th>Role</th>
+                            <th>Policy</th>
+                            <th>Status</th>
+                            <th>Notes</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for worker in workers %}
+                            <tr>
+                                <td>
+                                    <strong>{{ worker.name }}</strong>
+                                    <small>ID {{ worker.worker_id }}</small>
+                                </td>
+                                <td>{{ worker.role }}</td>
+                                <td>
+                                    {% if worker.helmet_exempt %}
+                                        <span class="policy-badge exempt">Helmet exempt</span>
+                                    {% else %}
+                                        <span class="policy-badge">Helmet required</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="worker-status {% if worker.active %}active{% else %}inactive{% endif %}">
+                                        {% if worker.active %}Active{% else %}Inactive{% endif %}
+                                    </span>
+                                </td>
+                                <td class="worker-notes-cell">{{ worker.notes or '—' }}</td>
+                                <td>
+                                    <div class="worker-actions">
+                                        <a class="text-link" href="{{ url_for('edit_worker_page', worker_id=worker.worker_id) }}">Edit</a>
+                                        <form method="post" action="{{ url_for('set_worker_status', worker_id=worker.worker_id) }}">
+                                            <input type="hidden" name="active" value="{{ 'false' if worker.active else 'true' }}">
+                                            <button class="text-button" type="submit">
+                                                {% if worker.active %}Deactivate{% else %}Activate{% endif %}
+                                            </button>
+                                        </form>
+                                        <form
+                                            method="post"
+                                            action="{{ url_for('delete_worker', worker_id=worker.worker_id) }}"
+                                            onsubmit="return confirm('Delete {{ worker.name|e }} (ID {{ worker.worker_id|e }})? This cannot be undone.');"
+                                        >
+                                            <button class="text-button danger-button" type="submit">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty-state">
+                <h3>No workers found</h3>
+                <p>Try a different search term or add a new worker record.</p>
+            </div>
+        {% endif %}
+    </article>
+</section>
+
+{% endblock %}

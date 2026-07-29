@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+
+{% block title %}
+SafeGate AI | Access Logs
+{% endblock %}
+
+{% block page_title %}
+Access Logs and Manager Review
+{% endblock %}
+
+{% block page_description %}
+Review recorded automated decisions and document human resolutions
+{% endblock %}
+
+{% block content %}
+
+<section class="policy-notice">
+    <h3>Human review only</h3>
+    <p>
+        A manager action is a human audit decision, not an AI decision. It
+        preserves the original automated result and does not operate a gate.
+    </p>
+</section>
+
+{% if message %}
+    <p class="form-message {{ message_type }}" role="status">{{ message }}</p>
+{% endif %}
+
+<section class="review-section">
+    <div class="panel-heading">
+        <div>
+            <h3>Manager-review queue</h3>
+            <p>Denied and uncertain automated decisions requiring human judgement.</p>
+        </div>
+    </div>
+
+    {% if review_events %}
+        <div class="review-grid">
+            {% for event in review_events %}
+                <article class="panel review-card">
+                    <div class="review-card-heading">
+                        <div>
+                            <h4>{{ event.worker_name }} <span>ID {{ event.worker_id }}</span></h4>
+                            <p>{{ event.timestamp.replace("T", " ") }}</p>
+                        </div>
+                        <span class="status-badge {% if event.status == 'ACCESS DENIED' %}denied{% else %}review{% endif %}">
+                            {{ event.status }}
+                        </span>
+                    </div>
+
+                    <dl class="review-details">
+                        <div>
+                            <dt>Original automated decision</dt>
+                            <dd>{{ event.status }}</dd>
+                        </div>
+                        <div>
+                            <dt>PPE reason</dt>
+                            <dd>{{ event.reason }}</dd>
+                        </div>
+                    </dl>
+
+                    {% if event.snapshot_url %}
+                        <a class="text-link" href="{{ event.snapshot_url }}" target="_blank">View recorded snapshot</a>
+                    {% else %}
+                        <span class="muted">No snapshot recorded</span>
+                    {% endif %}
+
+                    <form class="override-form" method="post">
+                        <label for="manager-name-{{ event.event_index }}">Manager name *</label>
+                        <input id="manager-name-{{ event.event_index }}" name="manager_name" type="text" required>
+
+                        <label for="manager-reason-{{ event.event_index }}">Manager reason *</label>
+                        <textarea id="manager-reason-{{ event.event_index }}" name="manager_reason" rows="3" required></textarea>
+
+                        <div class="review-actions">
+                            <button class="primary-button" type="submit" formaction="{{ url_for('approve_override', event_index=event.event_index) }}">Approve override</button>
+                            <button class="secondary-button" type="submit" formaction="{{ url_for('confirm_denial', event_index=event.event_index) }}">Confirm denial</button>
+                        </div>
+                    </form>
+                </article>
+            {% endfor %}
+        </div>
+    {% else %}
+        <section class="panel empty-state">No denied or manager-review events are awaiting review.</section>
+    {% endif %}
+</section>
+
+<section class="panel audit-history">
+    <div class="panel-heading">
+        <div>
+            <h3>Automated audit history</h3>
+            <p>Original AI decisions remain visible after every manager action.</p>
+        </div>
+    </div>
+
+    {% if events %}
+        <div class="table-wrapper">
+            <table class="data-table logs-table">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Worker</th>
+                        <th>Automated decision</th>
+                        <th>PPE reason</th>
+                        <th>Evidence</th>
+                        <th>Human decision</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for event in events %}
+                        <tr>
+                            <td>{{ event.timestamp.replace("T", " ") }}</td>
+                            <td><strong>{{ event.worker_name }}</strong><small>ID {{ event.worker_id }}</small></td>
+                            <td>{{ event.status }}</td>
+                            <td>{{ event.reason }}</td>
+                            <td>
+                                {% if event.snapshot_url %}
+                                    <a class="text-link" href="{{ event.snapshot_url }}" target="_blank">View snapshot</a>
+                                {% else %}
+                                    <span class="muted">—</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if event.review_status == "OVERRIDDEN" %}
+                                    <span class="override-approved">Override approved by {{ event.manager_name }}</span>
+                                    <small>{{ event.manager_reason }}</small>
+                                {% elif event.review_status == "DENIAL_CONFIRMED" %}
+                                    <span class="denial-confirmed">Denial confirmed by {{ event.manager_name }}</span>
+                                    <small>{{ event.manager_reason }}</small>
+                                {% elif event.review_status == "PENDING" %}
+                                    <span class="muted">Awaiting review</span>
+                                {% else %}
+                                    <span class="muted">Not required</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">No access events have been recorded.</div>
+    {% endif %}
+</section>
+
+{% endblock %}

@@ -1000,3 +1000,347 @@ a {
     font-size: 11px;
     font-weight: 700;
 }
+
+.policy-notice {
+    margin-bottom: 20px;
+    border: 1px solid rgba(244, 196, 94, 0.35);
+    border-radius: 12px;
+    background: rgba(244, 196, 94, 0.08);
+    padding: 16px 18px;
+}
+
+.policy-notice h3 {
+    margin: 0;
+    color: var(--warning);
+    font-size: 14px;
+}
+
+.policy-notice p {
+    margin: 7px 0 0;
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.55;
+}
+
+.form-message {
+    margin: 0 0 20px;
+    border-radius: 9px;
+    padding: 11px 14px;
+    font-size: 13px;
+    font-weight: 600;
+}
+
+.form-message.success {
+    background: rgba(56, 216, 139, 0.12);
+    color: var(--success);
+}
+
+.form-message.error {
+    background: rgba(255, 99, 123, 0.12);
+    color: var(--danger);
+}
+
+.workers-layout {
+    display: grid;
+    grid-template-columns: minmax(280px, 0.8fr) minmax(0, 1.7fr);
+    gap: 20px;
+    align-items: start;
+}
+
+.worker-record-form label,
+.worker-search-form label {
+    display: block;
+    margin: 14px 0 7px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.worker-record-form input[type="text"],
+.worker-record-form textarea,
+.worker-search-form input {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    padding: 10px;
+    font: inherit;
+    font-size: 13px;
+}
+
+.worker-record-form textarea {
+    resize: vertical;
+}
+
+.worker-record-form input[readonly] {
+    cursor: not-allowed;
+    color: var(--muted);
+}
+
+.worker-record-form .checkbox-label {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    color: var(--text);
+}
+
+.form-actions,
+.worker-actions,
+.worker-search-form > div {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    flex-wrap: wrap;
+}
+
+.form-actions {
+    margin-top: 20px;
+}
+
+.primary-button,
+.text-button {
+    border: 0;
+    cursor: pointer;
+    font: inherit;
+    font-weight: 700;
+}
+
+.primary-button {
+    border-radius: 8px;
+    background: var(--primary);
+    color: white;
+    padding: 10px 13px;
+    font-size: 12px;
+}
+
+.worker-search-form input {
+    min-width: 180px;
+    flex: 1;
+}
+
+.workers-table {
+    min-width: 880px;
+}
+
+.workers-table small {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+}
+
+.policy-badge,
+.worker-status {
+    display: inline-block;
+    border-radius: 20px;
+    padding: 6px 9px;
+    background: rgba(78, 140, 255, 0.13);
+    color: var(--primary);
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.policy-badge.exempt {
+    background: rgba(244, 196, 94, 0.12);
+    color: var(--warning);
+}
+
+.worker-status.active {
+    background: rgba(56, 216, 139, 0.12);
+    color: var(--success);
+}
+
+.worker-status.inactive {
+    background: rgba(255, 99, 123, 0.12);
+    color: var(--danger);
+}
+
+.worker-notes-cell {
+    max-width: 190px;
+    color: var(--muted);
+}
+
+.worker-actions {
+    min-width: 190px;
+}
+
+.worker-actions form {
+    margin: 0;
+}
+
+.text-button {
+    background: transparent;
+    color: #78adff;
+    padding: 0;
+    font-size: 12px;
+}
+
+.text-button:hover {
+    text-decoration: underline;
+}
+
+.danger-button {
+    color: var(--danger);
+}
+
+@media (max-width: 1100px) {
+    .workers-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+.review-section {
+    margin-bottom: 22px;
+}
+
+.review-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 18px;
+}
+
+.review-card-heading {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px;
+}
+
+.review-card-heading h4,
+.review-card-heading p {
+    margin: 0;
+}
+
+.review-card-heading h4 {
+    font-size: 14px;
+}
+
+.review-card-heading h4 span,
+.review-card-heading p {
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 400;
+}
+
+.review-card-heading p {
+    margin-top: 5px;
+}
+
+.review-details {
+    margin: 16px 0;
+}
+
+.review-details div {
+    margin-top: 10px;
+}
+
+.review-details dt {
+    color: var(--muted);
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+}
+
+.review-details dd {
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.45;
+}
+
+.override-form {
+    margin-top: 17px;
+    border-top: 1px solid var(--border);
+    padding-top: 16px;
+}
+
+.override-form label {
+    display: block;
+    margin: 12px 0 6px;
+    color: var(--muted);
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.override-form input,
+.override-form textarea {
+    width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--background);
+    color: var(--text);
+    padding: 10px;
+    font: inherit;
+    font-size: 13px;
+}
+
+.override-form textarea {
+    resize: vertical;
+}
+
+.override-form .primary-button {
+    margin-top: 14px;
+}
+
+.review-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.review-actions .primary-button {
+    margin-top: 0;
+}
+
+.secondary-button {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: transparent;
+    color: var(--text);
+    cursor: pointer;
+    font: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 10px 14px;
+}
+
+.secondary-button:hover {
+    border-color: var(--muted);
+}
+
+.human-override {
+    display: grid;
+    gap: 5px;
+    margin-top: 17px;
+    border: 1px solid rgba(56, 216, 139, 0.3);
+    border-radius: 9px;
+    background: rgba(56, 216, 139, 0.08);
+    color: var(--muted);
+    padding: 12px;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.human-override strong {
+    color: var(--success);
+}
+
+.denial-confirmed {
+    color: var(--danger);
+    font-weight: 700;
+}
+
+.audit-history {
+    padding-bottom: 8px;
+}
+
+.logs-table {
+    min-width: 980px;
+}
+
+.logs-table small {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+}

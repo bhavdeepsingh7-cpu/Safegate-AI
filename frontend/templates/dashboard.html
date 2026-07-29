@@ -379,16 +379,19 @@ Live PPE verification and construction-site access monitoring
                             </td>
 
                             <td>
-                                {% if event.override_status == "OVERRIDDEN" %}
+                                {% if event.review_status == "OVERRIDDEN" %}
                                     <span class="override-approved">
                                         Approved by
-                                        {{ event.override_manager }}
+                                        {{ event.manager_name }}
                                     </span>
 
-                                {% elif event.status in [
-                                    "ACCESS DENIED",
-                                    "MANAGER REVIEW"
-                                ] %}
+                                {% elif event.review_status == "DENIAL_CONFIRMED" %}
+                                    <span class="denial-confirmed">
+                                        Denial confirmed by
+                                        {{ event.manager_name }}
+                                    </span>
+
+                                {% elif event.review_status == "PENDING" %}
                                     <span class="muted">
                                         Awaiting review
                                     </span>
