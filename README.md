@@ -30,7 +30,7 @@ Construction sites need a consistent way to check whether people entering a work
 
 The terminal application in `backend/app.py` asks an operator to enter a worker ID, checks the local SQLite record and derives whether a helmet is required from that worker's approved policy. It samples a 15-frame detection history, then issues **ACCESS GRANTED**, **ACCESS DENIED**, or **MANAGER REVIEW**. Non-scanning outcomes are appended to a CSV file; denied and review outcomes also create a JPEG snapshot.
 
-Separately, `backend/dashboard.py` serves a Flask dashboard. Its live-camera service streams annotated YOLO frames as MJPEG and the dashboard reads the CSV log to show recent decisions and snapshot links. At present, the live dashboard stream is **not connected** to worker selection, the decision engine, or event logging.
+Separately, `backend/dashboard.py` serves a Flask dashboard. Its live-camera service streams annotated YOLO frames as MJPEG, lets an operator select an active worker, applies the same 15-frame policy, and records one completed decision to the CSV log. Denied and review dashboard decisions also create JPEG snapshots. The displayed gate state is a visual indication only; no gate-controller abstraction or hardware control is implemented.
 
 ## Features and status
 
@@ -51,7 +51,7 @@ Separately, `backend/dashboard.py` serves a Flask dashboard. Its live-camera ser
 
 ### Dashboard and audit trail
 
-- Flask dashboard with access-event totals, a live feed, camera start/stop endpoints and snapshot serving.
+- Flask dashboard with access-event totals, a live feed, active-worker verification sessions, camera start/stop endpoints and snapshot serving.
 - CSV logging of worker, PPE-frame counts, decision reason and snapshot path.
 - JPEG evidence snapshots for denied and manager-review decisions in the terminal workflow.
 - Repeat-event warning when a worker reaches three denied/review log entries.
@@ -76,10 +76,10 @@ Separately, `backend/dashboard.py` serves a Flask dashboard. Its live-camera ser
 | Repeat-violation warning | Implemented | `violation_tracker.py` counts denied/review CSV entries against threshold 3. |
 | Flask dashboard | Implemented | `dashboard.py` renders dashboard pages, reads log data and serves snapshots. |
 | Live MJPEG dashboard stream | Implemented | `live_feed.py` runs a background detector and yields `multipart/x-mixed-replace` JPEG frames. |
-| Dashboard worker-management UI | In Progress | `/workers` lists records, but the template states the module will be connected later; no web CRUD routes exist. |
+| Dashboard worker-management UI | In Progress | The dashboard can select an active worker for verification, but `/workers` is a placeholder and no web CRUD routes exist. |
 | Dashboard logs, reports, gate and settings | In Progress | Routes render placeholders only. |
 | Manager override | In Progress | CSV fields and display conditions exist, but there is no route or function to record an override. |
-| Dashboard decision integration | In Progress | The live feed performs detection only; it does not select workers, make access decisions, log events or control gate state. |
+| Dashboard decision integration | Implemented | An active worker can be selected in the dashboard; the live feed applies the decision engine and records one final event, with snapshots for denied/review outcomes. The gate state is visual only. |
 | Training configuration | In Progress | `train_ppe.py` references `construction-ppe.yaml`, but the checked-in file is `datasets/construction-ppe/data.yaml`; the script also fixes `device="mps"`. |
 | RFID and physical gate control | Planned | No implementation is present. |
 
@@ -121,7 +121,7 @@ flowchart TB
   RFID -. future identification input .-> ID
 ```
 
-The two camera paths are currently separate: the terminal flow performs policy decisions and audit logging; the dashboard flow provides an annotated visual stream.
+The terminal and dashboard flows both perform policy decisions and audit logging. They remain separate sessions and should not run against the same webcam concurrently.
 
 ### Software module architecture
 
@@ -336,7 +336,7 @@ To use another camera or model, change the relevant source constant/constructor 
 4. Present the relevant PPE to camera index 0. The engine first returns `SCANNING` until it has 15 frames.
 5. Read the on-frame status. A standard worker is granted only when helmet and vest meet the policy thresholds; unclear results go to manager review.
 6. Inspect `logs/access_events.csv`. Denied and review outcomes have JPEG evidence under `logs/snapshots/<YYYY-MM-DD>/<status>/`.
-7. Optionally run `python backend/dashboard.py` and open the local URL. It displays the log data and live annotated feed; refresh the page to see newly written terminal events.
+7. Optionally run `python backend/dashboard.py` and open the local URL. Select an active worker, then choose **Verify worker** to run a dashboard verification session. The page shows the live decision state and writes the completed event; refresh the page to see it in the recent-events table.
 
 ### Helmet exemption design
 
@@ -388,7 +388,7 @@ The first four scripts were run successfully in the repository’s Python 3.12.2
 
 ### Current limitations
 
-- The dashboard's stream is not an access-verification session and is not linked to worker IDs, decision-making, snapshots or log writes.
+- Dashboard verification is limited to a single in-memory selected-worker session. Its gate display is visual only: no gate-controller abstraction, simulator command state or hardware control is implemented.
 - There is no web UI for worker CRUD, log search, reports, settings, gate control or manager override; corresponding dashboard pages are placeholders.
 - The event CSV has override columns, but no implementation writes override values.
 - The detector extracts classes for boots, gloves and goggles, but access decisions only use helmet and vest states.
@@ -407,7 +407,7 @@ The first four scripts were run successfully in the repository’s Python 3.12.2
 
 **Current**
 
-- [ ] Connect dashboard worker/session state to the decision engine and event pipeline
+- [x] Connect dashboard worker/session state to the decision engine and event pipeline
 - [ ] Complete the dashboard worker, logs, reports, gate and settings pages
 - [ ] Align and validate the training dataset configuration
 - [ ] Implement an auditable human manager-override workflow
